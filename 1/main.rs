@@ -19,7 +19,7 @@ fn fill_with_num(line_numbers: &mut Vec<(usize, char)>, line: &str) {
             ));
 
             line_copy = &line_copy[start_index + digit.len()..];
-	    index += start_index + digit.len();
+            index += start_index + digit.len();
         }
     }
 }
@@ -36,7 +36,7 @@ fn main() {
         }
 
         fill_with_num(&mut line_numbers, line);
-        line_numbers.sort_by(|a,b| a.0.cmp(&b.0));
+        line_numbers.sort_by(|a, b| a.0.cmp(&b.0));
 
         let number = match line_numbers.len() {
             0 => "0".into(),

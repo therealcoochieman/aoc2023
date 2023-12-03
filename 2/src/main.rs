@@ -15,7 +15,8 @@ fn line_to_game(line: &str, num: u32) -> Game {
     for round in rounds {
         let colors: Vec<&str> = round.split(',').map(|s| s.trim()).collect();
         for color in colors {
-            let tokens: Vec<&str> = color.split(' ').map(|s| s.trim()).collect();
+            let tokens: Vec<&str> =
+                color.split(' ').map(|s| s.trim()).collect();
             let color_number: u32 = tokens[0].parse().unwrap();
             match tokens[1] {
                 "green" => green = max(color_number, green),
