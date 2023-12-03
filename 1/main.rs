@@ -37,7 +37,6 @@ fn main() {
 
         fill_with_num(&mut line_numbers, line);
         line_numbers.sort_by(|a,b| a.0.cmp(&b.0));
-dbg!(&line_numbers);
 
         let number = match line_numbers.len() {
             0 => "0".into(),
@@ -52,6 +51,5 @@ dbg!(&line_numbers);
         calibrations.push(number.parse().unwrap());
     }
 
-    dbg!(&calibrations);
     println!("{}", calibrations.iter().sum::<u16>());
 }
