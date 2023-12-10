@@ -1,7 +1,7 @@
 use std::{
+    collections::HashSet,
     fs::File,
     io::{BufRead, BufReader},
-    path,
 };
 
 type Coordinates = (usize, usize);
@@ -110,10 +110,10 @@ fn create_pipes(lines: &[String]) -> (Vec<Vec<Pipe>>, Coordinates) {
     (pipes, start_pipe.expect("No start type??"))
 }
 
-fn find_loop(
+fn find_loop_path(
     start: Coordinates,
     pipes: &[Vec<Pipe>],
-    visited: &mut Vec<Coordinates>,
+    visited: &mut HashSet<Coordinates>,
     rec_stack: &mut Vec<(Coordinates, usize)>,
     step: usize,
 ) -> bool {
@@ -123,7 +123,7 @@ fn find_loop(
         return true;
     }
 
-    visited.push(start);
+    visited.insert(start);
     rec_stack.push((start, step));
     for direction in &pipe.r#type {
         let direction_coord = direction.go_from(start);
@@ -133,7 +133,13 @@ fn find_loop(
             && direction_pipe.r#type.contains(&direction.inverse())
             && !visited.contains(&direction_coord)
         {
-            if find_loop(direction_coord, pipes, visited, rec_stack, step + 1) {
+            if find_loop_path(
+                direction_coord,
+                pipes,
+                visited,
+                rec_stack,
+                step + 1,
+            ) {
                 return true;
             }
         }
@@ -150,11 +156,12 @@ fn get_res(max: usize) -> usize {
         (max + 1) / 2
     }
 }
-fn find_loop_main(
+
+fn find_loop(
     start: Coordinates,
     pipes: &mut [Vec<Pipe>],
 ) -> (Vec<Coordinates>, usize) {
-    let (mut visited, mut rec_stack) = (Vec::new(), Vec::new());
+    let (mut visited, mut rec_stack) = (HashSet::new(), Vec::new());
     let look_vec = vec![
         (Direction::Up, Direction::Up.go_from(start)),
         (Direction::Down, Direction::Down.go_from(start)),
@@ -176,11 +183,11 @@ fn find_loop_main(
 
             pipes[start.1][start.0].r#type.remove(index);
 
-            if find_loop(direction, pipes, &mut visited, &mut rec_stack, 1) {
+            if find_loop_path(direction, pipes, &mut visited, &mut rec_stack, 1)
+            {
                 let max =
                     rec_stack.iter().max_by(|a, b| a.1.cmp(&b.1)).unwrap();
                 let path = rec_stack.iter().map(|step| step.0).collect();
-                println!("res is {}", get_res(max.1));
                 return (path, get_res(max.1));
             }
 
@@ -190,7 +197,11 @@ fn find_loop_main(
 
     (Vec::new(), 0)
 }
-fn find_enclosed_tiles(path: &[Coordinates], pipes: &[Vec<Pipe>]) {
+
+fn find_enclosed_tiles(
+    path: &HashSet<&Coordinates>,
+    pipes: &[Vec<Pipe>],
+) -> usize {
     let mut res = 0;
     for line in pipes {
         for pipe in line {
@@ -214,8 +225,9 @@ fn find_enclosed_tiles(path: &[Coordinates], pipes: &[Vec<Pipe>]) {
         }
     }
 
-    println!("wtf {}", res);
+    res
 }
+
 fn find_s(start: Coordinates, path: &[Coordinates], pipes: &mut [Vec<Pipe>]) {
     let look_vec = vec![
         (Direction::Up, Direction::Up.go_from(start)),
@@ -244,7 +256,7 @@ fn find_s(start: Coordinates, path: &[Coordinates], pipes: &mut [Vec<Pipe>]) {
         [Direction::Up, Direction::Left] => 'J',
         [Direction::Down, Direction::Left] => '7',
         [Direction::Down, Direction::Right] => 'F',
-        _ => unreachable!()
+        _ => unreachable!(),
     };
     pipes[start.1][start.0].char = char;
     println!("S is {}", char);
@@ -255,9 +267,14 @@ fn main() {
     let reader = BufReader::new(&file);
     let lines: Vec<String> = reader.lines().collect::<Result<_, _>>().unwrap();
     let (mut pipes, start_pipe) = create_pipes(&lines);
-    let (mut path, res) = find_loop_main(start_pipe, &mut pipes);
+    let (mut path, res) = find_loop(start_pipe, &mut pipes);
     path.insert(0, start_pipe);
-    println!("haha {}", res);
+    println!("It takes {} steps along the loop!", res);
+
     find_s(start_pipe, &path, &mut pipes);
-    find_enclosed_tiles(&path, &pipes);
+    let path = HashSet::from_iter(path.iter());
+    println!(
+        "There are {} enclosed tiles within the loop!",
+        find_enclosed_tiles(&path, &pipes)
+    );
 }

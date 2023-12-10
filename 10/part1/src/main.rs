@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     fs::File,
     io::{BufRead, BufReader},
 };
@@ -40,18 +41,17 @@ type PipeType = Vec<Direction>;
 
 #[derive(Debug)]
 struct Pipe {
-    pub coord: Coordinates,
     pub r#type: PipeType,
 }
 
 impl Default for Pipe {
     fn default() -> Self {
-        Pipe::new('.', (0, 0))
+        Pipe::new('.')
     }
 }
 
 impl Pipe {
-    pub fn new(char: char, coord: Coordinates) -> Self {
+    pub fn new(char: char) -> Self {
         let r#type = match char {
             '|' => vec![Direction::Up, Direction::Down],
             '-' => vec![Direction::Left, Direction::Right],
@@ -69,7 +69,7 @@ impl Pipe {
             _ => unreachable!(),
         };
 
-        Self { coord, r#type }
+        Self { r#type }
     }
 }
 
@@ -89,7 +89,7 @@ fn create_pipes(lines: &[String]) -> (Vec<Vec<Pipe>>, Coordinates) {
         pipe_line.push(Pipe::default()); // left padding
 
         for (x, char) in line.chars().enumerate() {
-            pipe_line.push(Pipe::new(char, (x + 1, y + 1)));
+            pipe_line.push(Pipe::new(char));
             if char == 'S' {
                 start_pipe = Some((x + 1, y + 1));
             }
@@ -105,38 +105,10 @@ fn create_pipes(lines: &[String]) -> (Vec<Vec<Pipe>>, Coordinates) {
     (pipes, start_pipe.expect("No start type??"))
 }
 
-// fn pipe_dfs(
-//     start: &Pipe,
-//     pipes: &[Vec<Pipe>],
-//     marked: &mut Vec<Coordinates>,
-// ) -> bool {
-//     marked.push(start.coord);
-//
-//     let first_direction = start.r#type[0].go_from(start.coord);
-//     let first_pipe = pipes[first_direction.1][first_direction.0];
-//     let mut first_loop = false;
-//     if first_pipe.r#type.contains(&start.r#type[0].inverse())
-//         && !marked.contains(&first_pipe.coord)
-//     {
-//         first_loop = pipe_dfs(&first_pipe, pipes, marked);
-//     }
-//
-//     let second_direction = start.r#type[1].go_from(start.coord);
-//     let second_pipe = pipes[second_direction.1][second_direction.0];
-//     let mut second_loop = false;
-//     if second_pipe.r#type.contains(&start.r#type[0].inverse())
-//         && !marked.contains(&second_pipe.coord)
-//     {
-//         second_loop = pipe_dfs(&second_pipe, pipes, marked);
-//     }
-//
-//     second_loop || first_loop
-// }
-
-fn find_loop(
+fn find_loop_path(
     start: Coordinates,
     pipes: &[Vec<Pipe>],
-    visited: &mut Vec<Coordinates>,
+    visited: &mut HashSet<Coordinates>,
     rec_stack: &mut Vec<(Coordinates, usize)>,
     step: usize,
 ) -> bool {
@@ -146,7 +118,7 @@ fn find_loop(
         return true;
     }
 
-    visited.push(start);
+    visited.insert(start);
     rec_stack.push((start, step));
     for direction in &pipe.r#type {
         let direction_coord = direction.go_from(start);
@@ -156,7 +128,13 @@ fn find_loop(
             && direction_pipe.r#type.contains(&direction.inverse())
             && !visited.contains(&direction_coord)
         {
-            if find_loop(direction_coord, pipes, visited, rec_stack, step + 1) {
+            if find_loop_path(
+                direction_coord,
+                pipes,
+                visited,
+                rec_stack,
+                step + 1,
+            ) {
                 return true;
             }
         }
@@ -173,11 +151,12 @@ fn get_res(max: usize) -> usize {
         (max + 1) / 2
     }
 }
-fn find_loop_main(
+
+fn find_loop(
     start: Coordinates,
     pipes: &mut [Vec<Pipe>],
 ) -> (Vec<Coordinates>, usize) {
-    let (mut visited, mut rec_stack) = (Vec::new(), Vec::new());
+    let (mut visited, mut rec_stack) = (HashSet::new(), Vec::new());
     let look_vec = vec![
         (Direction::Up, Direction::Up.go_from(start)),
         (Direction::Down, Direction::Down.go_from(start)),
@@ -199,11 +178,11 @@ fn find_loop_main(
 
             pipes[start.1][start.0].r#type.remove(index);
 
-            if find_loop(direction, pipes, &mut visited, &mut rec_stack, 1) {
+            if find_loop_path(direction, pipes, &mut visited, &mut rec_stack, 1)
+            {
                 let max =
                     rec_stack.iter().max_by(|a, b| a.1.cmp(&b.1)).unwrap();
                 let path = rec_stack.iter().map(|step| step.0).collect();
-                println!("res is {}", get_res(max.1));
                 return (path, get_res(max.1));
             }
 
@@ -218,6 +197,6 @@ fn main() {
     let reader = BufReader::new(&file);
     let lines: Vec<String> = reader.lines().collect::<Result<_, _>>().unwrap();
     let (mut pipes, start_pipe) = create_pipes(&lines);
-    let (path, res) =  find_loop_main(start_pipe, &mut pipes);
-    println!("haha {}", res);
+    let (_, res) = find_loop(start_pipe, &mut pipes);
+    println!("It takes {} steps along the loop!", res);
 }
